@@ -1,4 +1,4 @@
-const CACHE='bedside-dashboard-v11';
+const CACHE='bedside-dashboard-v12';
 const ASSETS=['./','./index.html','./manifest.json','./icon.svg','./app-launch-fix.js'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
 self.addEventListener('activate',e=>e.waitUntil((async()=>{await clients.claim();const keys=await caches.keys();await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));const ws=await clients.matchAll({type:'window'});await Promise.all(ws.map(c=>c.navigate(c.url).catch(()=>{})))} )()));
@@ -11,9 +11,9 @@ async function patchedNavigation(request){
     text=text
       .replace(/data-fallback="[^"]*"/g,'')
       .replace(/data-scheme="chatgpt:\/\/"/g,'data-scheme="com.openai.chat://"')
-      .replace(/data-scheme="vnd\.youtube\.music:\/\/music\.youtube\.com\/"/g,'data-scheme="youtubemusic://"')
+      .replace(/data-scheme="(?:vnd\.youtube\.music:\/\/music\.youtube\.com\/|youtubemusic:\/\/)"/g,'data-scheme="https://music.youtube.com/"')
       .replace(/function launchApp\(scheme,fallback\)\{[^}]*setTimeout\([^}]*\}\,1100\)\}/,'function launchApp(scheme){window.location.href=scheme}');
-    if(!text.includes('app-launch-fix.js'))text=text.replace('</body>','<script src="./app-launch-fix.js?v=11"></script></body>');
+    if(!text.includes('app-launch-fix.js'))text=text.replace('</body>','<script src="./app-launch-fix.js?v=12"></script></body>');
     const headers=new Headers(r.headers);headers.delete('content-length');headers.delete('content-encoding');
     const out=new Response(text,{status:r.status,statusText:r.statusText,headers});
     const copy=out.clone();caches.open(CACHE).then(c=>c.put(request,copy));return out;
