@@ -1,11 +1,20 @@
-const CACHE='bedside-dashboard-v7';
-const ASSETS=['./','./index.html','./manifest.json','./icon.svg'];
+const CACHE='bedside-dashboard-v8';
+const ASSETS=['./','./index.html','./manifest.json','./icon.svg','./app-launch-fix.js'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
 self.addEventListener('activate',e=>e.waitUntil((async()=>{await clients.claim();const keys=await caches.keys();await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));const ws=await clients.matchAll({type:'window'});await Promise.all(ws.map(c=>c.navigate(c.url).catch(()=>{})))} )()));
+async function patchedNavigation(request){
+  try{
+    const r=await fetch(request,{cache:'no-store'});
+    const type=r.headers.get('content-type')||'';
+    if(!type.includes('text/html'))return r;
+    let text=await r.text();
+    if(!text.includes('app-launch-fix.js'))text=text.replace('</body>','<script src="./app-launch-fix.js?v=8"></script></body>');
+    const headers=new Headers(r.headers);headers.delete('content-length');headers.delete('content-encoding');
+    const out=new Response(text,{status:r.status,statusText:r.statusText,headers});
+    const copy=out.clone();caches.open(CACHE).then(c=>c.put(request,copy));return out;
+  }catch{return caches.match(request).then(r=>r||caches.match('./index.html'))}
+}
 self.addEventListener('fetch',e=>{
-  if(e.request.mode==='navigate'){
-    e.respondWith(fetch(e.request,{cache:'no-store'}).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request).then(r=>r||caches.match('./index.html'))));
-    return;
-  }
+  if(e.request.mode==='navigate'){e.respondWith(patchedNavigation(e.request));return}
   e.respondWith(caches.match(e.request).then(cached=>cached||fetch(e.request).then(r=>{if(e.request.method==='GET'&&r.ok){const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy))}return r})));
 });
