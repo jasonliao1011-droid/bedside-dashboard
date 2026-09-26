@@ -2,7 +2,7 @@
   const routes={
     'ChatGPT':'com.openai.chat://',
     'YouTube':'youtube://',
-    'YouTube Music':'shortcuts://run-shortcut?name=%E9%96%8B%E5%95%9F%20YouTube%20Music',
+    'YouTube Music':'shortcuts://run-shortcut?name=%E6%89%93%E9%96%8B%20YouTube%20music',
     'Calendar':'googlecalendar://'
   };
   document.querySelectorAll('.quick').forEach(button=>{
