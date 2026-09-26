@@ -32,10 +32,10 @@
   <div id="tasks"></div>
 </section>
 <nav class="bottom" aria-label="快速開啟 App">
-  <button class="quick" data-scheme="chatgpt://" data-fallback="https://chatgpt.com"><span class="appGlyph">G</span><span>ChatGPT</span></button>
-  <button class="quick" data-scheme="youtube://" data-fallback="https://www.youtube.com"><span class="appGlyph">▶</span><span>YouTube</span></button>
-  <button class="quick" data-scheme="youtubemusic://" data-fallback="https://music.youtube.com"><span class="appGlyph">♪</span><span>YouTube Music</span></button>
-  <button class="quick" data-scheme="googlecalendar://" data-fallback="https://calendar.google.com"><span class="appGlyph">31</span><span>Calendar</span></button>
+  <button class="quick" data-scheme="com.openai.chat://"><span class="appGlyph">G</span><span>ChatGPT</span></button>
+  <button class="quick" data-scheme="youtube://"><span class="appGlyph">▶</span><span>YouTube</span></button>
+  <button class="quick" data-scheme="shortcuts://run-shortcut?name=%E9%96%8B%E5%95%9F%20YouTube%20Music"><span class="appGlyph">♪</span><span>YouTube Music</span></button>
+  <button class="quick" data-scheme="googlecalendar://"><span class="appGlyph">31</span><span>Calendar</span></button>
 </nav>
 </div>
 <dialog id="taskDialog"><h2>新增待辦</h2><div class="field"><label>內容</label><input id="taskInput" placeholder="例如：完成今天的計組進度"></div><div class="row"><button class="sb" id="cancelTask">取消</button><button class="sb" id="saveTask">新增</button></div></dialog>
@@ -57,7 +57,7 @@ function cacheEvents(){localStorage.setItem('calendar_events_cache',JSON.stringi
 function tick(){const d=new Date(),tm=new Date(d);tm.setDate(d.getDate()+1);$('time').textContent=d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false});$('date').textContent=d.toLocaleDateString('zh-TW',{month:'long',day:'numeric',weekday:'long'});$('todayLabel').textContent='今天 · '+d.toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'});$('tomorrowLabel').textContent='明天 · '+tm.toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'});if(localStorage.getItem('manualNight')===null){const h=d.getHours();document.body.classList.toggle('night',h>=23||h<7)}}
 async function weather(){try{const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=25.033&longitude=121.5654&current=temperature_2m,weather_code&timezone=Asia%2FTaipei',{cache:'no-store'}),j=await r.json(),c=j.current.weather_code,ds=c===0?'晴朗':c<=3?'多雲':c<=48?'有霧':c<=67?'有雨':c<=77?'降雪':c<=82?'陣雨':'雷雨';$('temp').textContent=Math.round(j.current.temperature_2m)+'°';$('weatherDesc').textContent='台北 · '+ds}catch{$('weatherDesc').textContent='天氣讀取失敗'}}
 async function loadCalendar(){const base=localStorage.getItem('calendar_backend_url'),key=localStorage.getItem('calendar_backend_key');if(!base||!key){$('calendarStatus').textContent='尚未設定自動同步後端。';return}clearTimeout(calendarTimer);$('calendarStatus').textContent='正在自動同步 Calendar…';try{const url=base+(base.includes('?')?'&':'?')+new URLSearchParams({action:'today',key,_:Date.now()}).toString();const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),12000);const r=await fetch(url,{cache:'no-store',signal:controller.signal,redirect:'follow'});clearTimeout(timeout);if(!r.ok)throw new Error('HTTP '+r.status);const text=(await r.text()).trim();let data;try{data=JSON.parse(text)}catch{const m=text.match(/^[A-Za-z_$][0-9A-Za-z_$]*\((.*)\);?$/s);if(!m)throw new Error('回傳格式錯誤');data=JSON.parse(m[1])}if(!data||data.ok!==true)throw new Error(data&&data.error?data.error:'未知錯誤');todayEvents=Array.isArray(data.todayEvents)?data.todayEvents:(Array.isArray(data.events)?data.events:[]);tomorrowEvents=Array.isArray(data.tomorrowEvents)?data.tomorrowEvents:[];renderEvents();cacheEvents();$('calendarStatus').textContent='已自動同步 Calendar · '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false})}catch(err){$('calendarStatus').textContent='Calendar 同步失敗：'+(err&&err.message?err.message:'無法連線')+'，先顯示快取資料。'}calendarTimer=setTimeout(loadCalendar,5*60*1000)}
-function launchApp(scheme,fallback){let leftPage=false;const mark=()=>{if(document.hidden)leftPage=true};document.addEventListener('visibilitychange',mark,{once:true});window.location.href=scheme;setTimeout(()=>{document.removeEventListener('visibilitychange',mark);if(!leftPage&&fallback)window.location.href=fallback},1100)}
+function launchApp(scheme){window.location.href=scheme}
 $('addTaskBtn').onclick=()=>{taskInput.value='';taskDialog.showModal();setTimeout(()=>taskInput.focus(),100)};
 $('cancelTask').onclick=()=>taskDialog.close();
 $('saveTask').onclick=()=>{const t=taskInput.value.trim();if(t){tasks.push({text:t,done:false});saveTasks();renderTasks();taskDialog.close()}};
@@ -67,8 +67,8 @@ $('saveCalendar').onclick=()=>{const u=$('backendUrlInput').value.trim(),k=$('ba
 $('clearCalendar').onclick=()=>{localStorage.removeItem('calendar_backend_url');localStorage.removeItem('calendar_backend_key');localStorage.removeItem('calendar_events_cache');todayEvents=[];tomorrowEvents=[];renderEvents();$('calendarStatus').textContent='Calendar 設定已清除。';calendarDialog.close()};
 $('nightBtn').onclick=()=>{const n=!document.body.classList.contains('night');document.body.classList.toggle('night',n);localStorage.setItem('manualNight',n?'1':'0')};
 $('nightBtn').ondblclick=()=>{localStorage.removeItem('manualNight');tick()};
-document.querySelectorAll('.quick').forEach(b=>b.onclick=()=>launchApp(b.dataset.scheme,b.dataset.fallback));
-renderTasks();loadCachedEvents();renderEvents();tick();weather();if(localStorage.getItem('calendar_backend_url')&&localStorage.getItem('calendar_backend_key'))setTimeout(loadCalendar,500);setInterval(tick,1000);setInterval(weather,600000);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&localStorage.getItem('calendar_backend_url'))loadCalendar()});if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+document.querySelectorAll('.quick').forEach(b=>b.onclick=()=>launchApp(b.dataset.scheme));
+renderTasks();loadCachedEvents();renderEvents();tick();weather();if(localStorage.getItem('calendar_backend_url')&&localStorage.getItem('calendar_backend_key'))setTimeout(loadCalendar,500);setInterval(tick,1000);setInterval(weather,600000);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&localStorage.getItem('calendar_backend_url'))loadCalendar()});if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=15',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});
 </script>
 </body>
 </html>
