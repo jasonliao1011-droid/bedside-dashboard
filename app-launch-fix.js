@@ -2,7 +2,7 @@
   const routes={
     'ChatGPT':'com.openai.chat://',
     'YouTube':'youtube://',
-    'YouTube Music':'https://music.youtube.com/',
+    'YouTube Music':'shortcuts://run-shortcut?name=%E9%96%8B%E5%95%9F%20YouTube%20Music',
     'Calendar':'googlecalendar://'
   };
   document.querySelectorAll('.quick').forEach(button=>{
@@ -15,7 +15,6 @@
     link.href=url;
     link.setAttribute('aria-label','開啟 '+name+' App');
     link.style.textDecoration='none';
-    if(name==='YouTube Music') link.rel='external';
     button.replaceWith(link);
   });
 })();
